@@ -67,7 +67,10 @@ module Audited
           before_destroy :require_comment if audited_options[:on].include?(:destroy)
         end
 
-        has_many :audits, -> { order(version: :asc) }, as: :auditable, class_name: Audited.audit_class.name, inverse_of: :auditable
+        has_many :audits, -> { order(version: :asc) }, as: :auditable,
+          class_name: Audited.audit_class.name, inverse_of: :auditable,
+          autosave: (Audited.storage_mechanism == :active_record)
+
         Audited.audit_class.audited_class_names << to_s
 
         after_create :audit_create    if audited_options[:on].include?(:create)
@@ -90,6 +93,34 @@ module Audited
     end
 
     module AuditedInstanceMethods
+      def s3_auditor_proxy
+        S3AuditorProxy.new(self)
+      end
+
+      def auditable_type
+        audits.new.auditable_type
+      end
+
+      def auditable_id
+        audits.new.auditable_id
+      end
+
+      def audits
+        if Audited.storage_mechanism == :s3
+          s3_auditor_proxy.audits
+        else
+          super
+        end
+      end
+
+      def associated_audits
+        if Audited.storage_mechanism == :s3
+          s3_auditor_proxy.associated_audits
+        else
+          super
+        end
+      end
+
       # Temporarily turns off auditing while saving.
       def save_without_auditing
         without_auditing { save }
@@ -136,7 +167,12 @@ module Audited
 
       # Find the oldest revision recorded prior to the date/time provided.
       def revision_at(date_or_time)
-        audits = self.audits.up_until(date_or_time)
+        audits = if Audited.storage_mechanism == :s3
+          S3AuditorProxy.new(self).up_until(date_or_time)
+        else
+          self.audits.up_until(date_or_time)
+        end
+
         revision_with Audited.audit_class.reconstruct_attributes(audits) unless audits.empty?
       end
 
@@ -147,10 +183,14 @@ module Audited
 
       # Returns a list combined of record audits and associated audits.
       def own_and_associated_audits
-        Audited.audit_class.unscoped
-        .where('(auditable_type = :type AND auditable_id = :id) OR (associated_type = :type AND associated_id = :id)',
-          type: self.class.name, id: id)
-        .order(created_at: :desc)
+        if Audited.storage_mechanism == :s3
+          S3AuditorProxy.new(self).own_and_associated_audits
+        else
+          Audited.audit_class.unscoped
+          .where('(auditable_type = :type AND auditable_id = :id) OR (associated_type = :type AND associated_id = :id)',
+            type: self.class.name, id: id)
+          .order(created_at: :desc)
+        end
       end
 
       # Combine multiple audits into one.
@@ -234,6 +274,7 @@ module Audited
 
       def write_audit(attrs)
         attrs[:associated] = send(audit_associated_with) unless audit_associated_with.nil?
+
         self.audit_comment = nil
 
         if auditing_enabled

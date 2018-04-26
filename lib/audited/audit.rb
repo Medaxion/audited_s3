@@ -55,6 +55,7 @@ module Audited
     scope :from_version,  ->(version){ where('version >= ?', version) }
     scope :to_version,    ->(version){ where('version <= ?', version) }
     scope :auditable_finder, ->(auditable_id, auditable_type){ where(auditable_id: auditable_id, auditable_type: auditable_type)}
+
     # Return all audits older than the current one.
     def ancestors
       self.class.ascending.auditable_finder(auditable_id, auditable_type).to_version(version)
@@ -100,6 +101,14 @@ module Audited
         auditable.update_attributes!(audited_changes.transform_values(&:first))
       else
         raise StandardError, "invalid action given #{action}"
+      end
+    end
+
+    def as_json(*)
+      super.tap do |hash|
+        # NOTE: currently, created_at is set to use an Amazon Athena/Hive friendly
+        # timestamp. This should really be customizable such that it allows ISO timestamps.
+        hash['created_at'] = created_at.utc.strftime('%Y-%m-%d %H:%M:%S')
       end
     end
 
@@ -164,6 +173,93 @@ module Audited
     # use created_at as timestamp cache key
     def self.collection_cache_key(collection = all, timestamp_column = :created_at)
       super(collection, :created_at)
+    end
+
+    def update_column(column_name, value)
+      if Audited.storage_mechanism == :s3
+        s3_audit_proxy.update_column(column_name, value)
+      else
+        super(column_name, value)
+      end
+    end
+
+    def update_attributes(audit_attrs)
+      if Audited.storage_mechanism == :s3
+        s3_audit_proxy.update_attributes(audit_attrs)
+      else
+        super(audit_attrs)
+      end
+    end
+
+    def update(audit_attrs)
+      if Audited.storage_mechanism == :s3
+        s3_audit_proxy.update_attributes(audit_attrs)
+      else
+        super(audit_attrs)
+      end
+    end
+
+    def self.create(attrs)
+      if Audited.storage_mechanism == :s3
+        instance = Audit.new(attrs)
+        S3AuditProxy.new(instance).create
+      else
+        super(attrs)
+      end
+    end
+
+      # it's really a bad idea to destroy all audits. this should only be used for
+      # testing, so it's been limited to only destroy stubbed audits and NEVER
+      # touch real S3 audits.
+    def self.destroy_all
+      if Audited.storage_mechanism == :s3 && Audited.storage_options[:stub_responses] == true
+        Audited::S3Auditor.s3_stub_cache = {}
+      else
+        super
+      end
+    end
+
+    def self.count(criterion=nil)
+      if Audited.storage_mechanism == :s3 && Audited.storage_options[:stub_responses] == true
+        S3AuditProxy.stubs_count(criterion)
+      else
+        super(criterion)
+      end
+    end
+
+    def s3_audit_proxy
+      S3AuditProxy.new(self)
+    end
+
+    def s3_key
+      s3_audit_proxy.s3_key
+    end
+
+    def ==(other_object)
+      if Audited.storage_mechanism == :s3
+        other_object.auditable_id == self.auditable_id &&
+          other_object.auditable_type == self.auditable_type &&
+          other_object.associated_id == self.associated_id &&
+          other_object.associated_type == self.associated_type &&
+          other_object.user_id == self.user_id &&
+          other_object.user_type == self.user_type &&
+          other_object.username == self.username &&
+          other_object.action == self.action &&
+          other_object.audited_changes == self.audited_changes &&
+          other_object.version == self.version &&
+          other_object.comment == self.comment &&
+          other_object.remote_address == self.remote_address &&
+          other_object.request_uuid == self.request_uuid &&
+          other_object.created_at.to_s == self.created_at.to_s
+      else
+        super(other_object)
+      end
+    end
+
+    def run_s3_callbacks
+      set_audit_user
+      set_request_uuid
+      set_remote_address
     end
 
     private

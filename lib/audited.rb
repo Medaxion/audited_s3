@@ -2,11 +2,20 @@ require 'active_record'
 
 module Audited
   class << self
-    attr_accessor :ignored_attributes, :current_user_method, :max_audits, :auditing_enabled
+    attr_accessor :ignored_attributes, :current_user_method, :max_audits,
+                  :auditing_enabled, :storage_mechanism, :storage_options
     attr_writer :audit_class
 
     def audit_class
       @audit_class ||= Audit
+    end
+
+    def storage_mechanism
+      @storage_mechanism || :active_record
+    end
+
+    def storage_options
+      @storage_options || {}
     end
 
     def store
@@ -26,7 +35,10 @@ end
 
 require 'audited/auditor'
 require 'audited/audit'
+require 'audited/s3_auditor_proxy'
+require 'audited/s3_audit_proxy'
 
 ::ActiveRecord::Base.send :include, Audited::Auditor
 
+require 'audited/s3_auditor'
 require 'audited/sweeper'

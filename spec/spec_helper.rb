@@ -1,6 +1,7 @@
 ENV['RAILS_ENV'] = 'test'
 require 'bundler/setup'
 require 'single_cov'
+require 'pry'
 SingleCov.setup :rspec
 
 if Bundler.definition.dependencies.map(&:name).include?('protected_attributes')
@@ -11,7 +12,9 @@ require 'rspec/rails'
 require 'audited'
 require 'audited-rspec'
 require 'audited_spec_helpers'
+require 's3_spec_helpers'
 require 'support/active_record/models'
+require 'timecop'
 
 SPEC_ROOT = Pathname.new(File.expand_path('../', __FILE__))
 
@@ -19,6 +22,8 @@ Dir[SPEC_ROOT.join('support/*.rb')].each{|f| require f }
 
 RSpec.configure do |config|
   config.include AuditedSpecHelpers
+  config.include S3SpecHelpers
   config.use_transactional_fixtures = false if Rails.version.start_with?('4.')
   config.use_transactional_tests = false if config.respond_to?(:use_transactional_tests=)
 end
+

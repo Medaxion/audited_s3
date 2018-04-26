@@ -1,4 +1,5 @@
 require "spec_helper"
+require 'aws-sdk'
 
 SingleCov.covered! uncovered: 9 # not testing proxy_respond_to? hack / 2 methods
 
@@ -223,6 +224,20 @@ describe Audited::Auditor do
           user.save!
           expect(user.audits.last.audited_changes).to eq({"name" => [nil, "new name"]})
         end
+      end
+    end
+
+    describe "storage_options" do
+      it "should default storage options to an empty hash" do
+        expect(Audited.storage_options).to eq({})
+      end
+
+      it "should allow the user to set storage options" do
+        Audited.config do |config|
+          config.storage_options = { bucket_name: 'blah' }
+        end
+
+        expect(Audited.storage_options).to eq(bucket_name: 'blah')
       end
     end
   end
@@ -528,7 +543,7 @@ describe Audited::Auditor do
     end
 
     it "should have one revision for each audit" do
-      expect(user.audits.size).to eql( user.revisions.size )
+      expect(user.audits.size).to eql(user.revisions.size)
     end
 
     it "should set the attributes for each revision" do

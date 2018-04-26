@@ -57,6 +57,16 @@ ActiveRecord::Schema.define do
     t.column :title, :string
   end
 
+  create_table :employees do |t|
+    t.column :company_id, :integer
+    t.column :name, :string
+  end
+
+  create_table :customers do |t|
+    t.column :company_id, :integer
+    t.column :name, :string
+  end
+
   create_table :audits do |t|
     t.column :auditable_id, :integer
     t.column :auditable_type, :string

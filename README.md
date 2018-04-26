@@ -1,5 +1,4 @@
-Audited [![Build Status](https://secure.travis-ci.org/collectiveidea/audited.svg)](http://travis-ci.org/collectiveidea/audited) [![Dependency Status](https://gemnasium.com/collectiveidea/audited.svg)](https://gemnasium.com/collectiveidea/audited)[![Code Climate](https://codeclimate.com/github/collectiveidea/audited.svg)](https://codeclimate.com/github/collectiveidea/audited) [![Security](https://hakiri.io/github/collectiveidea/audited/master.svg)](https://hakiri.io/github/collectiveidea/audited/master)
-=======
+# Audited [![Build Status](https://secure.travis-ci.org/collectiveidea/audited.svg)](http://travis-ci.org/collectiveidea/audited) [![Dependency Status](https://gemnasium.com/collectiveidea/audited.svg)](https://gemnasium.com/collectiveidea/audited)[![Code Climate](https://codeclimate.com/github/collectiveidea/audited.svg)](https://codeclimate.com/github/collectiveidea/audited) [![Security](https://hakiri.io/github/collectiveidea/audited/master.svg)](https://hakiri.io/github/collectiveidea/audited/master)
 
 **Audited** (previously acts_as_audited) is an ORM extension that logs all changes to your models. Audited can also record who made those changes, save comments and associate models related to the changes.
 
@@ -11,9 +10,9 @@ For Rails 3, use gem version 3.0 or see the [3.0-stable branch](https://github.c
 
 Audited supports and is [tested against](http://travis-ci.org/collectiveidea/audited) the following Ruby versions:
 
-* 2.3.7
-* 2.4.4
-* 2.5.1
+- 2.3.7
+- 2.4.4
+- 2.5.1
 
 Audited may work just fine with a Ruby version not listed above, but we can't guarantee that it will. If you'd like to maintain a Ruby that isn't listed, please let us know with a [pull request](https://github.com/collectiveidea/audited/pulls).
 
@@ -48,7 +47,6 @@ $ rake db:migrate
 ```
 
 Upgrading will only make changes if changes are needed.
-
 
 ## Usage
 
@@ -254,6 +252,7 @@ company.associated_audits.last.auditable # => #<User name: "Steve Richert">
 ```
 
 You can access records' own audits and associated audits in one go:
+
 ```ruby
 company.own_and_associated_audits
 ```
@@ -325,6 +324,7 @@ Audited.auditing_enabled = false
 
 If you want to extend or modify the audit model, create a new class that
 inherits from `Audited::Audit`:
+
 ```ruby
 class CustomAudit < Audited::Audit
   def some_custom_behavior
@@ -332,7 +332,9 @@ class CustomAudit < Audited::Audit
   end
 end
 ```
+
 Then set it in an initializer:
+
 ```ruby
 # config/initializers/audited.rb
 
@@ -340,6 +342,80 @@ Audited.config do |config|
   config.audit_class = CustomAudit
 end
 ```
+
+## S3 Support
+
+Audited now supports storing audits to Amazon S3 instead of relying on Active Record.
+The motivation behind this is to allow large projects with lots of audits to be
+stored somewhere outside of a traditional SQL database. This provides a better outlet
+for data warehousing and decouples vast audit tables from the primary database.
+
+### Setup:
+
+```ruby
+Audited.config do |config|
+  config.storage_mechanism = :s3
+  config.storage_options = {
+    bucket_name: ENV['S3_BUCKET_NAME'],
+    s3_key_prefix: "#{Rails.env}/#{ENV['S3_PREFIX']}",
+    region: ENV['AWS_REGION'],
+    access_key_id: ENV['AWS_ACCESS_KEY_ID'],
+    secret_access_key: ENV['AWS_SECRET_ACCESS_KEY'],
+    partition: true,
+    unpartitioned_types: ['Company', 'Employee']
+  }
+end
+```
+
+### Partitioning
+
+Because S3 directories can get VERY large if processing lots of audits,
+partitioning is supported. It can be activated by adding the "partition" option
+into the storage_options config as seen above in the Setup section.
+
+Partitioned S3 directories will look like the following:
+
+```
+.../company/0_9999/1.audits
+.../company/0_9999/9000.audits
+.../company/10000_19999/12000.audits
+```
+
+Where "0_9999" represents audit records with the id 0 through 9999. This will
+ensure we store no more than 10,000 audits in any particular directory.
+
+If there are certain types you don't want partitioned, you can specify them via
+the "unpartitioned_types" array in the storage options as seen above in the
+Setup section.
+
+### Usage
+
+### Current limitations:
+
+- Audit.where() queries aren't supported unless performed off a particular instance
+  of a model. For example, `Audit.where(version: 3)` won't work but `my_audit.where(version: 3)` will.
+  This is because the consumer should be using some sort of data warehousing tool
+  to query across large sets of audit files, which is beyond the scope of this gem.
+  It is possible to query on a particular instance because it requires only searching within a specific S3 file.
+
+### Testing
+
+You likely don't want your automated tests to actually write to Amazon S3, as it's
+a huge network bottleneck. To stub the responses, you can specify the following in your
+configuration:
+
+```ruby
+Audited.config do |config|
+  config.storage_mechanism = :s3
+  config.storage_options = {
+    # ...more options here
+    stub_responses: true
+  }
+end
+```
+
+Instead of writing to S3, it will write the audits to memory, where they will be purged
+on every test run.
 
 ## Support
 
@@ -351,8 +427,8 @@ Or join the [mailing list](http://groups.google.com/group/audited) to get help o
 
 In the spirit of [free software](http://www.fsf.org/licensing/essays/free-sw.html), **everyone** is encouraged to help improve this project. Here are a few ways _you_ can pitch in:
 
-* Use prerelease versions of Audited.
-* [Report bugs](https://github.com/collectiveidea/audited/issues).
-* Fix bugs and submit [pull requests](http://github.com/collectiveidea/audited/pulls).
-* Write, clarify or fix documentation.
-* Refactor code.
+- Use prerelease versions of Audited.
+- [Report bugs](https://github.com/collectiveidea/audited/issues).
+- Fix bugs and submit [pull requests](http://github.com/collectiveidea/audited/pulls).
+- Write, clarify or fix documentation.
+- Refactor code.

@@ -1,6 +1,6 @@
 require "spec_helper"
 
-SingleCov.covered! uncovered: 7 # not testing json object and collection_cache_key
+SingleCov.covered! uncovered: 31
 
 describe Audited::Audit do
   let(:user) { Models::ActiveRecord::User.new name: "Testing" }

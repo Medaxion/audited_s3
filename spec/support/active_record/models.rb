@@ -84,6 +84,20 @@ module Models
 
     class Company < ::ActiveRecord::Base
       audited
+
+      has_many :employees
+    end
+
+    class Employee < ::ActiveRecord::Base
+      audited associated_with: :company
+
+      belongs_to :company
+    end
+
+    class Customer < ::ActiveRecord::Base
+      audited associated_with: :customer
+
+      belongs_to :company
     end
 
     class Company::STICompany < Company

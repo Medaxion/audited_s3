@@ -18,11 +18,16 @@ Gem::Specification.new do |gem|
   gem.required_ruby_version = '>= 2.3.0'
 
   gem.add_dependency 'activerecord', '>= 4.2', '< 5.3'
+  gem.add_dependency 'aws-sdk', '~> 2.10'
 
   gem.add_development_dependency 'appraisal'
   gem.add_development_dependency 'rails', '>= 4.2', '< 5.3'
   gem.add_development_dependency 'rspec-rails', '~> 3.5'
   gem.add_development_dependency 'single_cov'
+  gem.add_development_dependency 'pry-byebug'
+  gem.add_development_dependency 'webmock', '~> 3.3'
+  gem.add_development_dependency 'timecop'
+
 
   # JRuby support for the test ENV
   if defined?(JRUBY_VERSION)

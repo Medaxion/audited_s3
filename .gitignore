@@ -15,3 +15,4 @@ gemfiles/*.lock
 pkg
 tmp/*
 audited_test.sqlite3.db
+env_setup.rb
