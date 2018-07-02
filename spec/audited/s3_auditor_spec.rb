@@ -127,25 +127,17 @@ describe 's3 auditor' do
       end
 
       context 'auditable overrides audited_attributes' do
-        before do
-          class AuditedAttributesCompany < ::ActiveRecord::Base
-            self.table_name = 'companies'
-            audited
+        it 'should record the specified audited_attributes' do
+          company = Models::ActiveRecord::Company.create(name: 'test')
+          customer = Models::ActiveRecord::CustomAuditedCustomer.create(company: company, name: 'Grandpa Joe')
 
-            def audited_attributes
-              super.merge({ 'status' => 'active' })
-            end
-          end
-        end
-
-        it 'should only record the audited_attributes' do
-          company = AuditedAttributesCompany.create(name: 'test', owner_id: 1)
-
-          audits = company.audits
+          audits = customer.audits
           create_audit = audits.first
 
           expect(audits.count).to eq(1)
-          expect(create_audit.audited_changes['status']).to eq('active')
+
+          expect(create_audit.audited_changes['custom']).to eq('value')
+          expect(create_audit.audited_changes['company']).to eq(company)
         end
       end
     end

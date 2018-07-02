@@ -109,6 +109,12 @@ module Audited
         # NOTE: currently, created_at is set to use an Amazon Athena/Hive friendly
         # timestamp. This should really be customizable such that it allows ISO timestamps.
         hash['created_at'] = created_at.utc.strftime('%Y-%m-%d %H:%M:%S')
+
+        if audited_changes = hash["audited_changes"]
+          unless audited_changes.is_a?(String)
+            hash["audited_changes"] = ActiveRecord::Coders::YAMLColumn.new(Object).dump(audited_changes)
+          end
+        end
       end
     end
 

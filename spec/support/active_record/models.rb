@@ -136,5 +136,15 @@ module Models
       self.table_name = 'companies'
       audited on: [:create, :update]
     end
+
+    class CustomAuditedCustomer < ::ActiveRecord::Base
+      self.table_name = 'customers'
+      audited associated_with: :company
+      belongs_to :company
+
+      def audited_attributes
+        super.merge({ 'custom' => 'value', 'company' => company })
+      end
+    end
   end
 end
